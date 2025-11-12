@@ -25,28 +25,71 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, "Seni seviyorum kadin!💌");
 });
 
-// 🔹 Логика сообщений
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
 
-  if (chatId === GIRL_ID) {
-    const targets = [YOUR_ID, SECOND_ID].filter(Boolean);
-    for (const target of targets) {
-      if (msg.text) await bot.sendMessage(target, `💬 Kız: ${msg.text}`);
+  // === если пишет девушка (основная или вторая) ===
+  if (chatId === GIRL_ID || chatId === SECOND_ID) {
+    try {
+      if (msg.text) await bot.sendMessage(YOUR_ID, `💬 Kız: ${msg.text}`);
       if (msg.photo)
-        await bot.sendPhoto(target, msg.photo[msg.photo.length - 1].file_id, {
+        await bot.sendPhoto(YOUR_ID, msg.photo.at(-1).file_id, {
           caption: msg.caption || "📸 Kız'dan fotoğraf",
         });
+      if (msg.audio)
+        await bot.sendAudio(YOUR_ID, msg.audio.file_id, {
+          caption: "🎵 Kız'dan müzik",
+        });
+      if (msg.video)
+        await bot.sendVideo(YOUR_ID, msg.video.file_id, {
+          caption: "🎬 Kız'dan video",
+        });
+      if (msg.voice) await bot.sendVoice(YOUR_ID, msg.voice.file_id);
+      if (msg.document) await bot.sendDocument(YOUR_ID, msg.document.file_id);
+
+      console.log("📨 Mesaj kız(lar)dan geldi, sana iletildi.");
+    } catch (err) {
+      console.error("🚨 Hata (kızdan gelen mesajı iletirken):", err);
     }
     return;
   }
 
-  if (chatId === YOUR_ID || chatId === SECOND_ID) {
-    if (msg.text) await bot.sendMessage(GIRL_ID, msg.text);
-    if (msg.photo)
-      await bot.sendPhoto(GIRL_ID, msg.photo[msg.photo.length - 1].file_id, {
-        caption: msg.caption,
-      });
+  // === если пишешь ты ===
+  if (chatId === YOUR_ID) {
+    try {
+      // отправляем обоим девушкам
+      const girls = [GIRL_ID, SECOND_ID].filter(Boolean);
+      for (const girl of girls) {
+        if (msg.text) await bot.sendMessage(girl, msg.text);
+        if (msg.photo)
+          await bot.sendPhoto(girl, msg.photo.at(-1).file_id, {
+            caption: msg.caption,
+          });
+        if (msg.audio)
+          await bot.sendAudio(girl, msg.audio.file_id, {
+            caption: msg.caption,
+          });
+        if (msg.video)
+          await bot.sendVideo(girl, msg.video.file_id, {
+            caption: msg.caption,
+          });
+        if (msg.voice) await bot.sendVoice(girl, msg.voice.file_id);
+        if (msg.document) await bot.sendDocument(girl, msg.document.file_id);
+      }
+
+      console.log("✅ Mesaj her iki kıza gönderildi!");
+    } catch (error) {
+      const desc = error?.response?.body?.description;
+      if (desc === "Bad Request: chat not found") {
+        await bot.sendMessage(
+          YOUR_ID,
+          "⚠️ Kız henüz bota yazmadı, bu yüzden mesaj gönderilemiyor 💬",
+        );
+      } else {
+        console.error("🚨 Beklenmeyen hata:", error);
+        await bot.sendMessage(YOUR_ID, "🚨 Beklenmeyen bir hata oluştu.");
+      }
+    }
   }
 });
 
