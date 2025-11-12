@@ -1,9 +1,10 @@
 // ==============================
-// 💌 Only for you bebegim✨
+// 💌 Only for you, bebegim ✨
+// Stable Render version (Webhook + Ping route)
 // ==============================
 
-import express from "express";
-import TelegramBot from "node-telegram-bot-api";
+const express = require("express");
+const TelegramBot = require("node-telegram-bot-api");
 
 const app = express();
 app.use(express.json());
@@ -13,30 +14,31 @@ const token = process.env.TOKEN;
 const YOUR_ID = Number(process.env.YOUR_ID);
 const GIRL_ID = Number(process.env.GIRL_ID);
 const SECOND_ID = Number(process.env.SECOND_ID);
+const URL = process.env.RENDER_EXTERNAL_URL;
 
-// 🧠 Helper: удобный лог в консоль
+// 🧠 Helper: elegant logger
 const log = (msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`);
 
-// 💬 Инициализация бота и webhook
-const bot = new TelegramBot(token);
-const URL = process.env.RENDER_EXTERNAL_URL;
+// ==============================
+// 💬 Bot setup with webhook
+// ==============================
+const bot = new TelegramBot(token, { polling: false });
 
 bot
   .setWebHook(`https://${URL}/bot${token}`)
   .then(() => log("✅ Webhook registered successfully"))
   .catch((err) => log(`⚠️ Webhook error: ${err.message}`));
 
-// 📩 Обработка входящих апдейтов от Telegram
+// 📩 Handle Telegram updates via POST
 app.post(`/bot${token}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
 // ==============================
-// ✨ Handlers
+// ✨ Message Handlers
 // ==============================
 
-// 👋 Приветствие
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(
     msg.chat.id,
@@ -46,7 +48,7 @@ bot.onText(/\/start/, (msg) => {
   log(`🚀 /start from ${msg.chat.username || msg.chat.id}`);
 });
 
-// 💌 Универсальная пересылка
+// 💌 Main message handler
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text || "";
@@ -54,35 +56,32 @@ bot.on("message", async (msg) => {
   const isFromGirl = chatId === GIRL_ID || chatId === SECOND_ID;
 
   try {
-    // === Если пишет девушка ===
     if (isFromGirl) {
       await forwardToYou(msg);
-      log(`💬 Message from girl: ${text.slice(0, 50)}`);
+      log(`💬 From girl: ${text.slice(0, 50)}`);
       return;
     }
 
-    // === Если пишешь ты ===
     if (isFromYou) {
       await forwardToGirls(msg);
-      log(`📤 Message from you: ${text.slice(0, 50)}`);
+      log(`📤 From you: ${text.slice(0, 50)}`);
     }
   } catch (err) {
-    log(`🚨 Error handling message: ${err.message}`);
+    log(`🚨 Message handling error: ${err.message}`);
   }
 });
 
 // ==============================
-// 💫 Forward functions
+// 💫 Forwarding functions
 // ==============================
 
-// 💌 Девушка → Тебе
 async function forwardToYou(msg) {
   const senderName = msg.chat.id === GIRL_ID ? "Shabush" : "6497";
 
+  const options = { parse_mode: "Markdown" };
+
   if (msg.text)
-    await bot.sendMessage(YOUR_ID, `💬 *${senderName}:* ${msg.text}`, {
-      parse_mode: "Markdown",
-    });
+    await bot.sendMessage(YOUR_ID, `💬 *${senderName}:* ${msg.text}`, options);
   if (msg.photo)
     await bot.sendPhoto(YOUR_ID, msg.photo.at(-1).file_id, {
       caption: `📸 ${senderName} fotoğraf gönderdi`,
@@ -99,7 +98,6 @@ async function forwardToYou(msg) {
   if (msg.document) await bot.sendDocument(YOUR_ID, msg.document.file_id);
 }
 
-// 💌 Ты → Девушкам
 async function forwardToGirls(msg) {
   const girls = [GIRL_ID, SECOND_ID].filter(Boolean);
 
@@ -123,7 +121,12 @@ async function forwardToGirls(msg) {
 }
 
 // ==============================
-// 🌐 Server
+// 🌐 Express server + Ping route
 // ==============================
+
+app.get("/", (req, res) => {
+  res.status(200).send("🤖 Bot is alive and waiting for you, bebegim 💞");
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => log(`✅ Server running on port ${PORT}`));
