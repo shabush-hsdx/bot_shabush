@@ -1,17 +1,23 @@
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 
+const app = express();
+app.use(express.json());
+
+// 🔐 Конфигурация
 const token = process.env.TOKEN;
 const YOUR_ID = Number(process.env.YOUR_ID);
 const GIRL_ID = Number(process.env.GIRL_ID);
 const SECOND_ID = Number(process.env.SECOND_ID);
 
-const URL = `https://${process.env.RENDER_EXTERNAL_URL}`; // Render URL
-bot.setWebHook(`${URL}/bot${token}`); // устанавливаем webhook
+// 🔹 Создаём бота СНАЧАЛА
+const bot = new TelegramBot(token);
 
-app.use(express.json());
+// 🔹 Потом уже ставим webhook
+const URL = process.env.RENDER_EXTERNAL_URL;
+bot.setWebHook(`https://${URL}/bot${token}`);
 
-// 🩵 Telegram отправляет апдейты сюда
+// 🔹 Telegram будет присылать апдейты сюда
 app.post(`/bot${token}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
@@ -22,10 +28,11 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, "Seni seviyorum kadin!💌");
 });
 
+// 🔹 Основная логика
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
 
-  // === если пишет девушка (основная или вторая) ===
+  // === Если пишет девушка (основная или вторая) ===
   if (chatId === GIRL_ID || chatId === SECOND_ID) {
     try {
       if (msg.text) await bot.sendMessage(YOUR_ID, `💬 Kız: ${msg.text}`);
@@ -51,10 +58,9 @@ bot.on("message", async (msg) => {
     return;
   }
 
-  // === если пишешь ты ===
+  // === Если пишешь ты ===
   if (chatId === YOUR_ID) {
     try {
-      // отправляем обоим девушкам
       const girls = [GIRL_ID, SECOND_ID].filter(Boolean);
       for (const girl of girls) {
         if (msg.text) await bot.sendMessage(girl, msg.text);
@@ -90,8 +96,8 @@ bot.on("message", async (msg) => {
   }
 });
 
-// Render требует открыть порт:
-const PORT = process.env.PORT || 3000;
+// 🌐 Render требует открыть порт:
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ Server started on port ${PORT}`);
 });
