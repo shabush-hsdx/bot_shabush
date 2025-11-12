@@ -6,9 +6,6 @@ const YOUR_ID = Number(process.env.YOUR_ID);
 const GIRL_ID = Number(process.env.GIRL_ID);
 const SECOND_ID = Number(process.env.SECOND_ID);
 
-const bot = new TelegramBot(token, { polling: false }); // ❗ polling выключен
-const app = express();
-
 const URL = `https://${process.env.RENDER_EXTERNAL_URL}`; // Render URL
 bot.setWebHook(`${URL}/bot${token}`); // устанавливаем webhook
 
