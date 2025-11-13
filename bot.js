@@ -1,6 +1,6 @@
 // ==============================
 // 💌 Only for you, bebegim ✨
-// Stable Render version (Webhook + Ping route)
+// Stable Render version (Webhook + Ping + AutoWebhookFix)
 // ==============================
 
 const express = require("express");
@@ -20,20 +20,45 @@ const URL = process.env.RENDER_EXTERNAL_URL;
 const log = (msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`);
 
 // ==============================
-// 💬 Bot setup with webhook
+// 💬 Bot initialization (webhook mode)
 // ==============================
 const bot = new TelegramBot(token, { polling: false });
 
-bot
-  .setWebHook(`https://${URL}/bot${token}`)
-  .then(() => log("✅ Webhook registered successfully"))
-  .catch((err) => log(`⚠️ Webhook error: ${err.message}`));
+async function setWebhook() {
+  try {
+    await bot.setWebHook(`https://${URL}/bot${token}`);
+    log("✅ Webhook registered successfully");
+  } catch (err) {
+    log("⚠️ Webhook registration failed: " + err.message);
+  }
+}
 
-// 📩 Handle Telegram updates via POST
+setWebhook();
+
+// 📩 Telegram → Bot route
 app.post(`/bot${token}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
+
+// ==============================
+// 🛠 Auto-fix webhook every 10 min
+// (Render Free plan sometimes resets webhooks)
+// ==============================
+setInterval(
+  async () => {
+    try {
+      const info = await bot.getWebHookInfo();
+      if (!info.url || info.url === "") {
+        log("⚠️ Webhook is empty! Restoring...");
+        await setWebhook();
+      }
+    } catch (err) {
+      log("⚠️ Webhook auto-check failed: " + err.message);
+    }
+  },
+  10 * 60 * 1000,
+);
 
 // ==============================
 // ✨ Message Handlers
@@ -78,23 +103,30 @@ bot.on("message", async (msg) => {
 async function forwardToYou(msg) {
   const senderName = msg.chat.id === GIRL_ID ? "Shabush" : "6497";
 
-  const options = { parse_mode: "Markdown" };
-
   if (msg.text)
-    await bot.sendMessage(YOUR_ID, `💬 *${senderName}:* ${msg.text}`, options);
+    await bot.sendMessage(YOUR_ID, `💬 *${senderName}:* ${msg.text}`, {
+      parse_mode: "Markdown",
+    });
+
   if (msg.photo)
     await bot.sendPhoto(YOUR_ID, msg.photo.at(-1).file_id, {
       caption: `📸 ${senderName} fotoğraf gönderdi`,
     });
+
   if (msg.video)
     await bot.sendVideo(YOUR_ID, msg.video.file_id, {
       caption: `🎬 ${senderName} video gönderdi`,
     });
+
   if (msg.audio)
     await bot.sendAudio(YOUR_ID, msg.audio.file_id, {
       caption: `🎵 ${senderName} müzik gönderdi`,
     });
+
   if (msg.voice) await bot.sendVoice(YOUR_ID, msg.voice.file_id);
+
+  if (msg.video_note) await bot.sendVideoNote(YOUR_ID, msg.video_note.file_id);
+
   if (msg.document) await bot.sendDocument(YOUR_ID, msg.document.file_id);
 }
 
@@ -103,19 +135,26 @@ async function forwardToGirls(msg) {
 
   for (const girl of girls) {
     if (msg.text) await bot.sendMessage(girl, msg.text);
+
     if (msg.photo)
       await bot.sendPhoto(girl, msg.photo.at(-1).file_id, {
         caption: msg.caption,
       });
+
     if (msg.video)
       await bot.sendVideo(girl, msg.video.file_id, {
         caption: msg.caption,
       });
+
     if (msg.audio)
       await bot.sendAudio(girl, msg.audio.file_id, {
         caption: msg.caption,
       });
+
     if (msg.voice) await bot.sendVoice(girl, msg.voice.file_id);
+
+    if (msg.video_note) await bot.sendVideoNote(girl, msg.video_note.file_id);
+
     if (msg.document) await bot.sendDocument(girl, msg.document.file_id);
   }
 }
